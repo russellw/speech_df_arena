@@ -2,7 +2,7 @@
 
 ### A comprehensive benchmark of current Anitspoofing systems on a wide collection of datasets. 
 
-With the growing advent of machine-generated speech, the scientific community is responding with valuable contributions to detect deepfakes. With research moving at such a rapid pace, it becomes challenging to keep track of generalizability of SOTA deepfake detection systems. This tool allows users to compute EER, accuracy and F1 scores on 10 popular countermeasure systems on any dataset provided a standardized protocol format.
+With the growing advent of machine-generated speech, the scientific community is responding with valuable contributions to detect deepfakes. With research moving at such a rapid pace, it becomes challenging to keep track of generalizability of SOTA deepfake detection systems. This tool allows users to compute EER, accuracy and F1 scores on popular countermeasure systems on any dataset provided a standardized protocol format.
 
 The main leaderboard can be found on [Hugging face](https://huggingface.co/spaces/Speech-Arena-2025/Speech-DF-Arena)
 
@@ -23,7 +23,7 @@ NOTE : The labels should contain "spoof" for spoofed samples and "bonafide" for 
 
 ### 2. Obtain checkpoints and config files
 
-Checkpoints and configuration files for the 10 systems currently on the leaderboard can be found [here](https://drive.google.com/file/d/1iajJbXtrTDgyvxQYBA44V9_-nd9RaMzj/view?usp=sharing) .The checkpoints must be downloaded since the TCM and XLSR+SLS systems have a [dependancy](https://github.com/Speech-Arena/speech_df_arena/blob/19585fb79f65afbf64f56c5967705dceb74bc294/Models/tcm_add.py#L292) on the XLSR 300M checkpoint present in the zip file mentioned above. The file should be unziped and all the file should be present in the `df_arena_checkpoints/` directory. 
+Checkpoints and configuration files for the 10 systems currently on the leaderboard can be found [here](https://drive.google.com/file/d/1iajJbXtrTDgyvxQYBA44V9_-nd9RaMzj/view?usp=sharing) .The checkpoints must be downloaded since the TCM and XLSR+SLS systems have a [dependancy](https://github.com/Speech-Arena/speech_df_arena/blob/0fdeed13d964356339ab095beed2b552930cd3b4/Models/tcm_add.py#L292) on the XLSR 300M checkpoint present in the zip file mentioned above. The file should be unziped and all the file should be present in the `df_arena_checkpoints/` directory. 
 ### 3. Evaluation
 
 
