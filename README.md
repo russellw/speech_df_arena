@@ -1,4 +1,4 @@
-# Speech Deep Fake Arena
+# Speech Deepfake Arena
 
 ### A comprehensive benchmark of current Anitspoofing systems on a wide collection of datasets. 
 
