@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from sklearn.metrics import f1_score, accuracy_score
 
 def compute_det_curve(target_scores, nontarget_scores):
     """ frr, far, thresholds = compute_det_curve(target_scores, nontarget_scores)
@@ -69,40 +70,101 @@ def compute_eer(target_scores, nontarget_scores):
     eer = np.mean((frr[min_index], far[min_index]))
     return eer, thresholds[min_index]
 
-def compute_eer_API(score_file, protocol_file):
-    """eer = compute_eer_API(score_file, protocol_file)
-    
-    input
-    -----
-      score_file:     string, path to the socre file
-      protocol_file:  string, path to the protocol file
-    
-    output
-    ------
-      eer:  scalar, eer value
-      
-    The way to load text files using read_csv depends on the text format.
-    Please change the read_csv if necessary
+def compute_f1_accuracy(target_scores, nontarget_scores, threshold):
     """
+    Computes F1-score and accuracy based on a given threshold.
+
+    Args:
+        target_scores (np.array): Scores for target (bonafide) trials.
+        nontarget_scores (np.array): Scores for non-target (spoofed) trials.
+        threshold (float): Decision threshold to classify scores.
+
+    Returns:
+        f1 (float): F1-score.
+        accuracy (float): Accuracy.
+    """
+    # Assign labels based on threshold
+    y_true = np.concatenate([np.ones_like(target_scores), np.zeros_like(nontarget_scores)])
+    y_pred = np.concatenate([target_scores >= threshold, nontarget_scores >= threshold])
+
+    # Compute F1-score and accuracy
+    f1 = f1_score(y_true, y_pred)
+    accuracy = accuracy_score(y_true, y_pred)
+
+    return f1, accuracy
+
+# def compute_eer_API(score_file, protocol_file):
+#     """eer = compute_eer_API(score_file, protocol_file)
+    
+#     input
+#     -----
+#       score_file:     string, path to the socre file
+#       protocol_file:  string, path to the protocol file
+    
+#     output
+#     ------
+#       eer:  scalar, eer value
+      
+#     The way to load text files using read_csv depends on the text format.
+#     Please change the read_csv if necessary
+#     """
+#     protocol_df = pd.read_csv(
+#             protocol_file,
+#             names=["file_name", "label"],
+#             index_col="file_name",
+#             header=0
+#         )
+
+#     # load score
+#     score_df = pd.read_csv(
+#         score_file,
+#         names=["file_name", "cm_score"],
+#         sep= " ",
+#     )
+#     merged_pd = score_df.join(protocol_df)
+
+#     bonafide_scores = merged_pd.query('label == "bonafide"')["cm_score"].to_numpy()
+        
+#     spoof_scores = merged_pd.query('label == "spoof"')["cm_score"].to_numpy()
+#     eer, th = compute_eer(bonafide_scores, spoof_scores)
+#     return eer, th
+def compute_metrics(score_file, protocol_file):
+    """
+    Computes EER, F1-score, and accuracy from score and protocol files.
+
+    Args:
+        score_file (str): Path to the score file.
+        protocol_file (str): Path to the protocol file.
+
+    Returns:
+        dict: EER, threshold, F1-score, and accuracy.
+    """
+    # Load protocol and scores
     protocol_df = pd.read_csv(
             protocol_file,
             names=["file_name", "label"],
             index_col="file_name",
-        )
-
-    # load score
+            header=0
+        ) 
+      
     score_df = pd.read_csv(
         score_file,
         names=["file_name", "cm_score"],
         index_col="file_name",
-        skipinitialspace=True,
         sep= " ",
-        header=0,
     )
+
+
+    # Merge scores with protocol labels
     merged_pd = score_df.join(protocol_df)
 
     bonafide_scores = merged_pd.query('label == "bonafide"')["cm_score"].to_numpy()
-        
     spoof_scores = merged_pd.query('label == "spoof"')["cm_score"].to_numpy()
-    eer, th = compute_eer(bonafide_scores, spoof_scores)
-    return eer, th
+
+    # Compute EER and threshold
+    eer, threshold = compute_eer(bonafide_scores, spoof_scores)
+
+    # Compute F1-score and accuracy
+    f1, accuracy = compute_f1_accuracy(bonafide_scores, spoof_scores, threshold)
+
+    return {"EER (%)": eer*100, "Threshold": threshold, "F1-score": f1, "Accuracy (%)": accuracy*100}

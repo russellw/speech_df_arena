@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 from utils.datamodule import DataModule
 from Models.model_factory import ModelFactory
 import tqdm
-from utils.metrics import compute_det_curve, compute_eer, compute_eer_API
+from utils.metrics import compute_metrics
 from rich import print
 import os
 
@@ -50,9 +50,8 @@ def main():
     trainer.test(model, datamodule=data_module)
 
     print("Testing completed")
-    eer, th = compute_eer_API(args.out_score_file_name,
+    metrics = compute_metrics(args.out_score_file_name,
                               args.protocol_file_path)
-    print("EER (%): {:.4f}".format(eer * 100))
-
+    print(metrics)
 if __name__ == "__main__":
     main()
