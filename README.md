@@ -41,3 +41,6 @@ python -u evaluation.py --model_name tcm_add         \
 Example evaluation commands for all the models are shown in `examples.sh`
 
 NOTE:- Kindly note that the Unispeech and Whisper Mesonet systems are not supported by DF Arena toolkit yet. But the inference code for these two systems has been provided in the same link [mentioned above]([here](https://drive.google.com/file/d/1iajJbXtrTDgyvxQYBA44V9_-nd9RaMzj/view?usp=sharing)) along with instructions
+
+
+Score files for benchmarked systems can be found [here](https://drive.google.com/file/d/1pI-tvCZt4U__gGGLsCQMdZqLv_QBe4NW/view?usp=sharing)
