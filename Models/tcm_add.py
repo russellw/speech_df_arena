@@ -10,7 +10,9 @@ from torch.nn.modules.transformer import _get_clones
 from torch import nn, einsum
 from einops import rearrange
 from einops.layers.torch import Rearrange
+import os
 
+CHECKPOINTS_DIR = os.environ.get('DF_ARENA_CHECKPOINTS_DIR', '../df_arena_stuff/checkpoints/')
 
 def sinusoidal_embedding(n_channels, dim):
     pe = torch.FloatTensor([[p / (10000 ** (2 * (i // 2) / dim)) for i in range(dim)]
@@ -289,7 +291,7 @@ class MyConformer(nn.Module):
 class SSLModel(nn.Module): #W2V
     def __init__(self,device):
         super(SSLModel, self).__init__()
-        cp_path = '../df_arena_checkpoints/xlsr2_300m.pt'   
+        cp_path = os.path.join(CHECKPOINTS_DIR, 'checkpoints/xlsr2_300m.pt')
         model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task([cp_path])
         self.model = model[0]
         self.device=device
@@ -383,7 +385,7 @@ def load_model(model_path, out_score_file_name):
     
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
-        pytorch_model.load_state_dict(torch.load(model_path))
+        pytorch_model.load_state_dict(torch.load(model_path), strict=True)
     
     model = TCM_Add_antispoofing(pytorch_model)
     

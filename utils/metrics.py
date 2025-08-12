@@ -93,41 +93,6 @@ def compute_f1_accuracy(target_scores, nontarget_scores, threshold):
 
     return f1, accuracy
 
-# def compute_eer_API(score_file, protocol_file):
-#     """eer = compute_eer_API(score_file, protocol_file)
-    
-#     input
-#     -----
-#       score_file:     string, path to the socre file
-#       protocol_file:  string, path to the protocol file
-    
-#     output
-#     ------
-#       eer:  scalar, eer value
-      
-#     The way to load text files using read_csv depends on the text format.
-#     Please change the read_csv if necessary
-#     """
-#     protocol_df = pd.read_csv(
-#             protocol_file,
-#             names=["file_name", "label"],
-#             index_col="file_name",
-#             header=0
-#         )
-
-#     # load score
-#     score_df = pd.read_csv(
-#         score_file,
-#         names=["file_name", "cm_score"],
-#         sep= " ",
-#     )
-#     merged_pd = score_df.join(protocol_df)
-
-#     bonafide_scores = merged_pd.query('label == "bonafide"')["cm_score"].to_numpy()
-        
-#     spoof_scores = merged_pd.query('label == "spoof"')["cm_score"].to_numpy()
-#     eer, th = compute_eer(bonafide_scores, spoof_scores)
-#     return eer, th
 def compute_metrics(score_file, protocol_file):
     """
     Computes EER, F1-score, and accuracy from score and protocol files.
@@ -154,9 +119,11 @@ def compute_metrics(score_file, protocol_file):
         sep= " ",
     )
 
+    missing = set(protocol_df.index) - set(protocol_df.index).intersection(set(score_df.index))
+    assert len(missing) == 0, f"Missing scores for {len(missing)} files"
 
     # Merge scores with protocol labels
-    merged_pd = score_df.join(protocol_df)
+    merged_pd = protocol_df.join(score_df)
 
     bonafide_scores = merged_pd.query('label == "bonafide"')["cm_score"].to_numpy()
     spoof_scores = merged_pd.query('label == "spoof"')["cm_score"].to_numpy()
@@ -167,4 +134,4 @@ def compute_metrics(score_file, protocol_file):
     # Compute F1-score and accuracy
     f1, accuracy = compute_f1_accuracy(bonafide_scores, spoof_scores, threshold)
 
-    return {"EER (%)": eer*100, "Threshold": threshold, "F1-score": f1, "Accuracy (%)": accuracy*100}
+    return {"EER (%)": float(eer*100), "Threshold": float(threshold), "F1-score": float(f1), "Accuracy (%)": float(accuracy*100)}

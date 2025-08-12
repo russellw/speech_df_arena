@@ -1,7 +1,6 @@
-
-#Credits: 
 import random
 from typing import Union
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -10,16 +9,48 @@ from torch import Tensor
 import pytorch_lightning as pl
 import json
 from rich import print
+import fairseq
+import os
 
-MODEL_CONFIG_ARGS = {
-        "architecture": "AASIST",
-        "nb_samp": 64600,
-        "first_conv": 128,
-        "filts": [70, [1, 32], [32, 32], [32, 64], [64, 64]],
-        "gat_dims": [64, 32],
-        "pool_ratios": [0.5, 0.7, 0.5, 0.5],
-        "temperatures": [2.0, 2.0, 100.0, 100.0]
-    }
+CHECKPOINTS_DIR = os.environ.get('DF_ARENA_CHECKPOINTS_DIR', '../df_arena_stuff/checkpoints/')
+
+class SSLModel(nn.Module):
+    def __init__(self,out_score_file_name):
+        super(SSLModel, self).__init__()
+        self.out_score_file_name = None
+
+        cp_path = os.path.join(CHECKPOINTS_DIR, 'checkpoints/xlsr2_300m.pt')
+        model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task([cp_path])
+        self.model = model[0]
+        self.out_dim = 1024
+        return
+
+    def extract_feat(self, input_data):
+        
+        # put the model to GPU if it not there
+        if next(self.model.parameters()).device != input_data.device \
+           or next(self.model.parameters()).dtype != input_data.dtype:
+            self.model.to(input_data.device, dtype=input_data.dtype)
+            self.model.train()
+
+        
+        if True:
+            # input should be in shape (batch, length)
+            if input_data.ndim == 3:
+                input_tmp = input_data[:, :, 0]
+            else:
+                input_tmp = input_data
+                
+            # [batch, length, dim]
+            emb = self.model(input_tmp, mask=False, features_only=True)['x']
+        return emb
+
+
+#---------AASIST back-end------------------------#
+''' Jee-weon Jung, Hee-Soo Heo, Hemlata Tak, Hye-jin Shim, Joon Son Chung, Bong-Jin Lee, Ha-Jin Yu and Nicholas Evans. 
+    AASIST: Audio Anti-Spoofing Using Integrated Spectro-Temporal Graph Attention Networks. 
+    In Proc. ICASSP 2022, pp: 6367--6371.'''
+
 
 class GraphAttentionLayer(nn.Module):
     def __init__(self, in_dim, out_dim, **kwargs):
@@ -159,36 +190,42 @@ class HtrgGraphAttentionLayer(nn.Module):
         x1  :(#bs, #node, #dim)
         x2  :(#bs, #node, #dim)
         '''
+        #print('x1',x1.shape)
+        #print('x2',x2.shape)
         num_type1 = x1.size(1)
         num_type2 = x2.size(1)
-
+        #print('num_type1',num_type1)
+        #print('num_type2',num_type2)
         x1 = self.proj_type1(x1)
+        #print('proj_type1',x1.shape)
         x2 = self.proj_type2(x2)
-
+        #print('proj_type2',x2.shape)
         x = torch.cat([x1, x2], dim=1)
-
+        #print('Concat x1 and x2',x.shape)
+        
         if master is None:
             master = torch.mean(x, dim=1, keepdim=True)
-
+            #print('master',master.shape)
         # apply input dropout
         x = self.input_drop(x)
 
         # derive attention map
         att_map = self._derive_att_map(x, num_type1, num_type2)
-
+        #print('master',master.shape)
         # directional edge for master node
         master = self._update_master(x, master)
-
+        #print('master',master.shape)
         # projection
         x = self._project(x, att_map)
-
+        #print('proj x',x.shape)
         # apply batch norm
         x = self._apply_BN(x)
         x = self.act(x)
 
         x1 = x.narrow(1, 0, num_type1)
+        #print('x1',x1.shape)
         x2 = x.narrow(1, num_type1, num_type2)
-
+        #print('x2',x2.shape)
         return x1, x2, master
 
     def _update_master(self, x, master):
@@ -252,7 +289,7 @@ class HtrgGraphAttentionLayer(nn.Module):
 
         att_map = att_board
 
-        # att_map = torch.matmul(att_map, self.att_weight12)
+        
 
         # apply temperature
         att_map = att_map / self.temp
@@ -313,7 +350,6 @@ class GraphPool(nn.Module):
         scores: attention-based weights (#bs, #node, 1)
         h: graph data (#bs, #node, #dim)
         k: ratio of remaining nodes, (float)
-
         returns
         =====
         h: graph pool applied data (#bs, #node', #dim)
@@ -329,92 +365,6 @@ class GraphPool(nn.Module):
         return h
 
 
-class CONV(nn.Module):
-    @staticmethod
-    def to_mel(hz):
-        return 2595 * np.log10(1 + hz / 700)
-
-    @staticmethod
-    def to_hz(mel):
-        return 700 * (10**(mel / 2595) - 1)
-
-    def __init__(self,
-                 out_channels,
-                 kernel_size,
-                 sample_rate=16000,
-                 in_channels=1,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 bias=False,
-                 groups=1,
-                 mask=False):
-        super().__init__()
-        if in_channels != 1:
-
-            msg = "SincConv only support one input channel (here, in_channels = {%i})" % (
-                in_channels)
-            raise ValueError(msg)
-        self.out_channels = out_channels
-        self.kernel_size = kernel_size
-        self.sample_rate = sample_rate
-
-        # Forcing the filters to be odd (i.e, perfectly symmetrics)
-        if kernel_size % 2 == 0:
-            self.kernel_size = self.kernel_size + 1
-        self.stride = stride
-        self.padding = padding
-        self.dilation = dilation
-        self.mask = mask
-        if bias:
-            raise ValueError('SincConv does not support bias.')
-        if groups > 1:
-            raise ValueError('SincConv does not support groups.')
-
-        NFFT = 512
-        f = int(self.sample_rate / 2) * np.linspace(0, 1, int(NFFT / 2) + 1)
-        fmel = self.to_mel(f)
-        fmelmax = np.max(fmel)
-        fmelmin = np.min(fmel)
-        filbandwidthsmel = np.linspace(fmelmin, fmelmax, self.out_channels + 1)
-        filbandwidthsf = self.to_hz(filbandwidthsmel)
-
-        self.mel = filbandwidthsf
-        self.hsupp = torch.arange(-(self.kernel_size - 1) / 2,
-                                  (self.kernel_size - 1) / 2 + 1)
-        self.band_pass = torch.zeros(self.out_channels, self.kernel_size)
-        for i in range(len(self.mel) - 1):
-            fmin = self.mel[i]
-            fmax = self.mel[i + 1]
-            hHigh = (2*fmax/self.sample_rate) * \
-                np.sinc(2*fmax*self.hsupp/self.sample_rate)
-            hLow = (2*fmin/self.sample_rate) * \
-                np.sinc(2*fmin*self.hsupp/self.sample_rate)
-            hideal = hHigh - hLow
-
-            self.band_pass[i, :] = Tensor(np.hamming(
-                self.kernel_size)) * Tensor(hideal)
-
-    def forward(self, x, mask=False):
-        band_pass_filter = self.band_pass.clone().to(x.device)
-        if mask:
-            A = np.random.uniform(0, 20)
-            A = int(A)
-            A0 = random.randint(0, band_pass_filter.shape[0] - A)
-            band_pass_filter[A0:A0 + A, :] = 0
-        else:
-            band_pass_filter = band_pass_filter
-
-        self.filters = (band_pass_filter).view(self.out_channels, 1,
-                                               self.kernel_size)
-
-        return F.conv1d(x,
-                        self.filters,
-                        stride=self.stride,
-                        padding=self.padding,
-                        dilation=self.dilation,
-                        bias=None,
-                        groups=1)
 
 
 class Residual_block(nn.Module):
@@ -448,7 +398,7 @@ class Residual_block(nn.Module):
 
         else:
             self.downsample = False
-        self.mp = nn.MaxPool2d((1, 3))  # self.mp = nn.MaxPool2d((1,4))
+        
 
     def forward(self, x):
         identity = x
@@ -457,42 +407,50 @@ class Residual_block(nn.Module):
             out = self.selu(out)
         else:
             out = x
+
+        #print('out',out.shape)
         out = self.conv1(x)
 
-        # print('out',out.shape)
+        #print('aft conv1 out',out.shape)
         out = self.bn2(out)
         out = self.selu(out)
         # print('out',out.shape)
         out = self.conv2(out)
         #print('conv2 out',out.shape)
+        
         if self.downsample:
             identity = self.conv_downsample(identity)
 
         out += identity
-        out = self.mp(out)
+        #out = self.mp(out)
         return out
 
 
-class AASIST(pl.LightningModule):
-    def __init__(self, d_args, out_score_file_name):
-        super().__init__()
-        self.out_score_file_name = None
+class Wav2Vec2AASIST(pl.LightningModule):
+    def __init__(self):
+        super(Wav2Vec2AASIST, self).__init__()
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        
+        # AASIST parameters
+        filts = [128, [1, 32], [32, 32], [32, 64], [64, 64]]
+        gat_dims = [64, 32]
+        pool_ratios = [0.5, 0.5, 0.5, 0.5]
+        temperatures =  [2.0, 2.0, 100.0, 100.0]
 
-        self.d_args = d_args
-        filts = d_args["filts"]
-        gat_dims = d_args["gat_dims"]
-        pool_ratios = d_args["pool_ratios"]
-        temperatures = d_args["temperatures"]
 
-        self.conv_time = CONV(out_channels=filts[0],
-                              kernel_size=d_args["first_conv"],
-                              in_channels=1)
+        ####
+        # create network wav2vec 2.0
+        ####
+        self.ssl_model = SSLModel(device)
+        self.LL = nn.Linear(self.ssl_model.out_dim, 128)
+
         self.first_bn = nn.BatchNorm2d(num_features=1)
-
+        self.first_bn1 = nn.BatchNorm2d(num_features=64)
         self.drop = nn.Dropout(0.5, inplace=True)
         self.drop_way = nn.Dropout(0.2, inplace=True)
         self.selu = nn.SELU(inplace=True)
 
+        # RawNet2 encoder
         self.encoder = nn.Sequential(
             nn.Sequential(Residual_block(nb_filts=filts[1], first=True)),
             nn.Sequential(Residual_block(nb_filts=filts[2])),
@@ -501,28 +459,37 @@ class AASIST(pl.LightningModule):
             nn.Sequential(Residual_block(nb_filts=filts[4])),
             nn.Sequential(Residual_block(nb_filts=filts[4])))
 
-        self.pos_S = nn.Parameter(torch.randn(1, 23, filts[-1][-1]))
+        self.attention = nn.Sequential(
+            nn.Conv2d(64, 128, kernel_size=(1,1)),
+            nn.SELU(inplace=True),
+            nn.BatchNorm2d(128),
+            nn.Conv2d(128, 64, kernel_size=(1,1)),
+            
+        )
+        # position encoding
+        self.pos_S = nn.Parameter(torch.randn(1, 42, filts[-1][-1]))
+        
         self.master1 = nn.Parameter(torch.randn(1, 1, gat_dims[0]))
         self.master2 = nn.Parameter(torch.randn(1, 1, gat_dims[0]))
-
+        
+        # Graph module
         self.GAT_layer_S = GraphAttentionLayer(filts[-1][-1],
                                                gat_dims[0],
                                                temperature=temperatures[0])
         self.GAT_layer_T = GraphAttentionLayer(filts[-1][-1],
                                                gat_dims[0],
                                                temperature=temperatures[1])
-
+        # HS-GAL layer 
         self.HtrgGAT_layer_ST11 = HtrgGraphAttentionLayer(
             gat_dims[0], gat_dims[1], temperature=temperatures[2])
         self.HtrgGAT_layer_ST12 = HtrgGraphAttentionLayer(
             gat_dims[1], gat_dims[1], temperature=temperatures[2])
-
         self.HtrgGAT_layer_ST21 = HtrgGraphAttentionLayer(
             gat_dims[0], gat_dims[1], temperature=temperatures[2])
-
         self.HtrgGAT_layer_ST22 = HtrgGraphAttentionLayer(
             gat_dims[1], gat_dims[1], temperature=temperatures[2])
 
+        # Graph pooling layers
         self.pool_S = GraphPool(pool_ratios[0], gat_dims[0], 0.3)
         self.pool_T = GraphPool(pool_ratios[1], gat_dims[0], 0.3)
         self.pool_hS1 = GraphPool(pool_ratios[2], gat_dims[1], 0.3)
@@ -530,36 +497,47 @@ class AASIST(pl.LightningModule):
 
         self.pool_hS2 = GraphPool(pool_ratios[2], gat_dims[1], 0.3)
         self.pool_hT2 = GraphPool(pool_ratios[2], gat_dims[1], 0.3)
-
+        
         self.out_layer = nn.Linear(5 * gat_dims[1], 2)
 
-    def forward(self, x, Freq_aug=False):
-
-        x = x.unsqueeze(1)
-        x = self.conv_time(x, mask=Freq_aug)
-        x = x.unsqueeze(dim=1)
-        x = F.max_pool2d(torch.abs(x), (3, 3))
+    def forward(self, x):
+        #-------pre-trained Wav2vec model fine tunning ------------------------##
+        x_ssl_feat = self.ssl_model.extract_feat(x.squeeze(-1))
+        x = self.LL(x_ssl_feat) #(bs,frame_number,feat_out_dim)
+        
+        # post-processing on front-end features
+        x = x.transpose(1, 2)   #(bs,feat_out_dim,frame_number)
+        x = x.unsqueeze(dim=1) # add channel 
+        x = F.max_pool2d(x, (3, 3))
         x = self.first_bn(x)
         x = self.selu(x)
 
-        # get embeddings using encoder
-        # (#bs, #filt, #spec, #seq)
-        e = self.encoder(x)
-
-        # spectral GAT (GAT-S)
-        e_S, _ = torch.max(torch.abs(e), dim=3)  # max along time
-        e_S = e_S.transpose(1, 2) + self.pos_S
-
+        # RawNet2-based encoder
+        x = self.encoder(x)
+        x = self.first_bn1(x)
+        x = self.selu(x)
+        
+        w = self.attention(x)
+        
+        #------------SA for spectral feature-------------#
+        w1 = F.softmax(w,dim=-1)
+        m = torch.sum(x * w1, dim=-1)
+        e_S = m.transpose(1, 2) + self.pos_S 
+        
+        # graph module layer
         gat_S = self.GAT_layer_S(e_S)
         out_S = self.pool_S(gat_S)  # (#bs, #node, #dim)
-
-        # temporal GAT (GAT-T)
-        e_T, _ = torch.max(torch.abs(e), dim=2)  # max along freq
-        e_T = e_T.transpose(1, 2)
-
+        
+        #------------SA for temporal feature-------------#
+        w2 = F.softmax(w,dim=-2)
+        m1 = torch.sum(x * w2, dim=-2)
+     
+        e_T = m1.transpose(1, 2)
+       
+        # graph module layer
         gat_T = self.GAT_layer_T(e_T)
         out_T = self.pool_T(gat_T)
-
+        
         # learnable master node
         master1 = self.master1.expand(x.size(0), -1, -1)
         master2 = self.master2.expand(x.size(0), -1, -1)
@@ -600,19 +578,20 @@ class AASIST(pl.LightningModule):
         out_S = torch.max(out_S1, out_S2)
         master = torch.max(master1, master2)
 
+        # Readout operation
         T_max, _ = torch.max(torch.abs(out_T), dim=1)
         T_avg = torch.mean(out_T, dim=1)
 
         S_max, _ = torch.max(torch.abs(out_S), dim=1)
         S_avg = torch.mean(out_S, dim=1)
-
+        
         last_hidden = torch.cat(
             [T_max, T_avg, S_max, S_avg, master.squeeze(1)], dim=1)
-
+        
         last_hidden = self.drop(last_hidden)
         output = self.out_layer(last_hidden)
-
-        return last_hidden, output
+        
+        return output
 
     def test_step(self, batch, batch_idx):
         self._produce_evaluation_file(batch, batch_idx)
@@ -621,7 +600,7 @@ class AASIST(pl.LightningModule):
         x, utt_id = batch
         fname_list = []
         score_list = []
-        _, out = self(x)
+        out = self(x)
         scores = (out[:, 1]).data.cpu().numpy().ravel()
         fname_list.extend(utt_id)
         score_list.extend(scores.tolist())
@@ -633,13 +612,15 @@ class AASIST(pl.LightningModule):
 
 def load_model(model_path, out_score_file_name):
 
-    model = AASIST(MODEL_CONFIG_ARGS, out_score_file_name)
+    model = Wav2Vec2AASIST()
 
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
-        model.load_state_dict(torch.load(model_path), strict=True)
+        state_dict = torch.load(model_path, map_location='cpu')
+        state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
+        model.load_state_dict(state_dict, strict=True)
+        del state_dict
 
     model.out_score_file_name = out_score_file_name
-    
 
     return model
