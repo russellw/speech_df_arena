@@ -10,6 +10,16 @@ import pytorch_lightning as pl
 import yaml
 from rich import print
 
+MODEL_CONFIG_ARGS = {  'nb_samp': 64600,
+  'first_conv': 1024, 
+  'in_channels': 1,
+  'filts': [20, [20, 20], [20, 128], [128, 128]],
+  'blocks': [2, 4],
+  'nb_fc_node': 1024,
+  'gru_node': 1024,
+  'nb_gru_layer': 3,
+  'nb_classes': 2}
+
 class SincConv(nn.Module):
     @staticmethod
     def to_mel(hz):
@@ -21,17 +31,16 @@ class SincConv(nn.Module):
 
 
     def __init__(self, device,out_channels, kernel_size,in_channels=1,sample_rate=16000,
-                 stride=1, padding=0, dilation=1, bias=False, groups=1,freq_scale='Mel'):
+                 stride=1, padding=0, dilation=1, bias=False, groups=1):
 
         super(SincConv,self).__init__()
-
 
         if in_channels != 1:
             
             msg = "SincConv only support one input channel (here, in_channels = {%i})" % (in_channels)
             raise ValueError(msg)
         
-        self.out_channels = out_channels+1
+        self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.sample_rate=sample_rate
 
@@ -53,41 +62,21 @@ class SincConv(nn.Module):
         # initialize filterbanks using Mel scale
         NFFT = 512
         f=int(self.sample_rate/2)*np.linspace(0,1,int(NFFT/2)+1)
-
-
-        if freq_scale == 'Mel':
-            fmel=self.to_mel(f) # Hz to mel conversion
-            fmelmax=np.max(fmel)
-            fmelmin=np.min(fmel)
-            filbandwidthsmel=np.linspace(fmelmin,fmelmax,self.out_channels+2)
-            filbandwidthsf=self.to_hz(filbandwidthsmel) # Mel to Hz conversion
-            self.freq=filbandwidthsf[:self.out_channels]
-
-        elif freq_scale == 'Inverse-mel':
-            fmel=self.to_mel(f) # Hz to mel conversion
-            fmelmax=np.max(fmel)
-            fmelmin=np.min(fmel)
-            filbandwidthsmel=np.linspace(fmelmin,fmelmax,self.out_channels+2)
-            filbandwidthsf=self.to_hz(filbandwidthsmel) # Mel to Hz conversion
-            self.mel=filbandwidthsf[:self.out_channels]
-            self.freq=np.abs(np.flip(self.mel)-1) ## invert mel scale
-
-        
-        else:
-            fmelmax=np.max(f)
-            fmelmin=np.min(f)
-            filbandwidthsmel=np.linspace(fmelmin,fmelmax,self.out_channels+2)
-            self.freq=filbandwidthsmel[:self.out_channels]
-        
+        fmel=self.to_mel(f)   # Hz to mel conversion
+        fmelmax=np.max(fmel)
+        fmelmin=np.min(fmel)
+        filbandwidthsmel=np.linspace(fmelmin,fmelmax,self.out_channels+1)
+        filbandwidthsf=self.to_hz(filbandwidthsmel)  # Mel to Hz conversion
+        self.mel=filbandwidthsf
         self.hsupp=torch.arange(-(self.kernel_size-1)/2, (self.kernel_size-1)/2+1)
-        self.band_pass=torch.zeros(self.out_channels-1,self.kernel_size)
+        self.band_pass=torch.zeros(self.out_channels,self.kernel_size)
     
        
         
     def forward(self,x):
-        for i in range(len(self.freq)-1):
-            fmin=self.freq[i]
-            fmax=self.freq[i+1]
+        for i in range(len(self.mel)-1):
+            fmin=self.mel[i]
+            fmax=self.mel[i+1]
             hHigh=(2*fmax/self.sample_rate)*np.sinc(2*fmax*self.hsupp/self.sample_rate)
             hLow=(2*fmin/self.sample_rate)*np.sinc(2*fmin*self.hsupp/self.sample_rate)
             hideal=hHigh-hLow
@@ -96,7 +85,7 @@ class SincConv(nn.Module):
         
         band_pass_filter=self.band_pass.to(self.device)
 
-        self.filters = (band_pass_filter).view(self.out_channels-1, 1, self.kernel_size)
+        self.filters = (band_pass_filter).view(self.out_channels, 1, self.kernel_size)
         
         return F.conv1d(x, self.filters, stride=self.stride,
                         padding=self.padding, dilation=self.dilation,
@@ -147,7 +136,7 @@ class Residual_block(nn.Module):
         else:
             out = x
             
-        out = self.conv1(out)
+        out = self.conv1(x)
         out = self.bn2(out)
         out = self.lrelu(out)
         out = self.conv2(out)
@@ -159,6 +148,10 @@ class Residual_block(nn.Module):
         out = self.mp(out)
         return out
 
+
+
+
+
 class RawNet(nn.Module):
     def __init__(self, d_args, device):
         super(RawNet, self).__init__()
@@ -169,7 +162,7 @@ class RawNet(nn.Module):
         self.Sinc_conv=SincConv(device=self.device,
 			out_channels = d_args['filts'][0],
 			kernel_size = d_args['first_conv'],
-                        in_channels = d_args['in_channels'],freq_scale='Mel'
+                        in_channels = d_args['in_channels']
         )
         
         self.first_bn = nn.BatchNorm1d(num_features = d_args['filts'][0])
@@ -211,19 +204,19 @@ class RawNet(nn.Module):
 			
        
         self.sig = nn.Sigmoid()
+        self.logsoftmax = nn.LogSoftmax(dim=1)
         
-        
-    def forward(self, x, y = None,is_test=False):
+    def forward(self, x, y = None):
         
         
         nb_samp = x.shape[0]
         len_seq = x.shape[1]
         x=x.view(nb_samp,1,len_seq)
         
-        x = self.Sinc_conv(x)    # Fixed sinc filters convolution
+        x = self.Sinc_conv(x)    
         x = F.max_pool1d(torch.abs(x), 3)
         x = self.first_bn(x)
-        x = self.selu(x)
+        x =  self.selu(x)
         
         x0 = self.block0(x)
         y0 = self.avgpool(x0).view(x0.size(0), -1) # torch.Size([batch, filter])
@@ -270,17 +263,9 @@ class RawNet(nn.Module):
         x = x[:,-1,:]
         x = self.fc1_gru(x)
         x = self.fc2_gru(x)
-
-        if not is_test:
-            output = x
-            return output
-
-        else:
-            output=F.softmax(x,dim=1)
-            return output
+        output=self.logsoftmax(x)
       
-       
-        
+        return output
 
     def _make_attention_fc(self, in_features, l_out_features):
 
@@ -333,16 +318,13 @@ class RawNet_antispoofing(pl.LightningModule):
         fh.close()
 
         
-def load_model(model_path, model_config, out_score_file_name):
+def load_model(model_path, out_score_file_name):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    with open(model_config, 'r') as f_yaml:
-            config = yaml.load(f_yaml, Loader=yaml.FullLoader)
-
-    pytorch_model = RawNet(config['model'], device)
+    pytorch_model = RawNet(MODEL_CONFIG_ARGS, device)
 
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
-        pytorch_model.load_state_dict(torch.load(model_path, map_location=device))
+        pytorch_model.load_state_dict(torch.load(model_path, map_location=device), strict=True)
     
     model = RawNet_antispoofing(pytorch_model)
         

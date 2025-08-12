@@ -5,12 +5,13 @@ import torch.nn.functional as F
 from torch import nn, Tensor
 import pytorch_lightning as pl
 import fairseq
+CHECKPOINTS_DIR = os.environ.get('DF_ARENA_CHECKPOINTS_DIR', '../df_arena_stuff/checkpoints/')
 
 class SSLModel(nn.Module):
     def __init__(self,device):
         super(SSLModel, self).__init__()
         
-        cp_path = '../df_arena_checkpoints/xlsr2_300m.pt'
+        cp_path = os.path.join(CHECKPOINTS_DIR, 'checkpoints/xlsr2_300m.pt')
         model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task([cp_path])
         self.model = model[0]
         self.device=device

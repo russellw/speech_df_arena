@@ -10,6 +10,17 @@ import pytorch_lightning as pl
 import yaml
 from rich import print
 
+MODEL_CONFIG_ARGS = {
+    'nb_samp': 64600,
+    'out_channels': 70,
+    'first_conv': 128,  # no. of filter coefficients 
+    'in_channels': 1,
+    'filts': [32, [32, 32], [32, 64], [64, 64]],
+    'blocks': [2, 4],
+    'nb_classes': 2
+}
+
+
 class GraphAttentionLayer(nn.Module):
     def __init__(self, in_dim, out_dim, **kwargs):
         super().__init__()
@@ -468,14 +479,11 @@ class RawGAT_ST_antispoofing(pl.LightningModule):
                 fh.write("{} {}\n".format(f, cm))
         fh.close()
 
-def load_model(model_path, model_config, out_score_file_name):
+def load_model(model_path, out_score_file_name):
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
-    with open(model_config, 'r') as f_yaml:
-            config = yaml.load(f_yaml, Loader=yaml.FullLoader)
-
-    pytorch_model = RawGAT_ST(config['model'], device)
+    pytorch_model = RawGAT_ST(MODEL_CONFIG_ARGS, device)
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
         pytorch_model.load_state_dict(torch.load(model_path))
