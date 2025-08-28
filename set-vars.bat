@@ -1,0 +1,2 @@
+set DF_ARENA_CHECKPOINTS_DIR=C:\speech_df_arena
+set DF_ARENA_PROTOCOL_FILES_DIR=C:\speech_df_arena\protocol_files
