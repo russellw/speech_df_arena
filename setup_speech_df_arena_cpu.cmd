@@ -1,80 +1,74 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
-REM ================================================
-REM Speech DF Arena environment (Windows, CPU-only)
-REM - Python 3.10 (compatible with librosa 0.9.2 & numpy 1.23.3)
-REM - Conda for most packages
-REM - Pip for transformers / fairseq / speechbrain
-REM ================================================
+REM ===== Fast + stable: conda-forge only, then pip for the rest =====
+REM Versions chosen to satisfy librosa==0.9.2 + numpy==1.23.3, with SciPy pinned to 1.10.1.
 
-REM Usage: setup_speech_df_arena_cpu.cmd [ENV_NAME]
-REM Example: setup_speech_df_arena_cpu.cmd speech-df-arena
-set ENV_NAME=%1
-if "%ENV_NAME%"=="" set ENV_NAME=speech-df-arena
+set ENV_NAME=speech-df-arena
+if not "%~1"=="" set ENV_NAME=%~1
 
 echo.
-echo === Creating conda env "%ENV_NAME%" with Python 3.10 ===
-call conda create -y -n "%ENV_NAME%" python=3.10
+echo === Nuking any half-created env (safe if it doesn't exist) ===
+call conda deactivate
+call conda env remove -n "%ENV_NAME%" -y >NUL 2>&1
+
+echo.
+echo === Clean indexes to speed up solve ===
+call conda clean -a -y >NUL 2>&1
+
+echo.
+echo === Create env in ONE shot from conda-forge only (classic solver) ===
+REM --override-channels + -c conda-forge keeps it to one repo = faster, fewer conflicts
+REM scipy pinned to 1.10.1 to match numpy 1.23.x + Py 3.10
+call conda create -y -n "%ENV_NAME%" --override-channels -c conda-forge --solver classic ^
+  python=3.10 ^
+  numpy==1.23.3 ^
+  scipy==1.10.1 ^
+  librosa==0.9.2 ^
+  pandas==2.2.3 ^
+  pyyaml==6.0.2 ^
+  rich==13.9.4 ^
+  tqdm==4.67.1 ^
+  einops==0.8.1 ^
+  pytorch-lightning==2.3.2
 if errorlevel 1 goto :conda_error
 
 echo.
-echo === Activating env ===
+echo === Activate env ===
 call conda activate "%ENV_NAME%"
 if errorlevel 1 goto :conda_error
 
 echo.
-echo === Installing core packages with conda-forge ===
-call conda install -y -c conda-forge ^
-  numpy==1.23.3 ^
-  pandas==2.2.3 ^
-  scipy==1.15.1 ^
-  librosa==0.9.2 ^
-  pytorch-lightning==2.3.2 ^
-  pyyaml==6.0.2 ^
-  rich==13.9.4 ^
-  tqdm==4.67.1 ^
-  einops==0.8.1
-if errorlevel 1 goto :conda_error
-
-echo.
-echo === Installing PyTorch + Torchaudio (CPU) from pytorch channel ===
-call conda install -y -c pytorch pytorch torchaudio cpuonly
-if errorlevel 1 goto :conda_error
-
-echo.
-echo === Upgrading pip ===
-python -m pip install --upgrade pip
+echo === Upgrade pip and wheel (faster installs) ===
+python -m pip install --upgrade pip wheel
 if errorlevel 1 goto :pip_error
 
 echo.
-echo === Installing pip-first packages (transformers, fairseq, speechbrain) ===
-pip install ^
-  transformers==4.45.2 ^
-  fairseq==1.0.0a0 ^
-  speechbrain==1.0.0
+echo === Install CPU PyTorch + Torchaudio via pip ===
+REM No GPU; pip wheels are straightforward on Windows CPU.
+pip install torch torchaudio
 if errorlevel 1 goto :pip_error
 
 echo.
-echo === Done. Environment "%ENV_NAME%" is ready. ===
+echo === Install HF + pip-first libraries ===
+pip install transformers==4.45.2 fairseq==1.0.0a0 speechbrain==1.0.0
+if errorlevel 1 goto :pip_error
+
+echo.
+echo === Verify ===
 python -V
 pip --version
-echo.
-echo --- Key packages installed ---
-conda list | findstr /R /C:"^numpy " /C:"^pandas " /C:"^scipy " /C:"^librosa " /C:"^pytorch " /C:"^torchaudio " /C:"^pytorch-lightning " /C:"^pyyaml " /C:"^rich " /C:"^tqdm " /C:"^einops "
-pip show transformers | findstr /B "Name Version"
-pip show fairseq     | findstr /B "Name Version"
-pip show speechbrain | findstr /B "Name Version"
-echo.
+conda list | findstr /R /C:"^python " /C:"^numpy " /C:"^scipy " /C:"^librosa " /C:"^pandas " /C:"^pytorch-lightning " /C:"^pyyaml " /C:"^rich " /C:"^tqdm " /C:"^einops "
+pip show torch torchaudio transformers fairseq speechbrain | findstr /B "Name Version"
 
+echo.
+echo === Done. Activate later with: conda activate %ENV_NAME% ===
 goto :eof
 
 :conda_error
-echo.
-echo [ERROR] A conda step failed. Make sure 'conda' is available in CMD and try again.
+echo [ERROR] Conda step failed. See messages above.
 exit /b 1
 
 :pip_error
-echo.
-echo [ERROR] A pip step failed. See the error log above.
+echo [ERROR] Pip step failed. See messages above.
 exit /b 1
