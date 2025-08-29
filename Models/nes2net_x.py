@@ -279,7 +279,7 @@ def load_model(model_path, out_score_file_name):
     
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
-        pytorch_model.load_state_dict(torch.load(model_path), strict=True)
+        pytorch_model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False), strict=True)
     
     model = Nes2Net_X_Antispoofing(pytorch_model)
     

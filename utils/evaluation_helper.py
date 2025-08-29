@@ -43,7 +43,10 @@ def evaluate_across_models_across_datasets(args, timestamp, checkpoints_dir, pro
     for model in models:
         results_dict[model] = {}
 
-        model_path = [os.path.join(checkpoints_dir, i) for i in os.listdir(checkpoints_dir) if i.startswith(model)][0]
+        # Find model files, prioritizing .pth, .pt, .ckpt over other files
+        model_files = [i for i in os.listdir(checkpoints_dir) if i.startswith(model)]
+        model_files = sorted(model_files, key=lambda x: (not any(x.endswith(ext) for ext in ['.pth', '.pt', '.ckpt']), x))
+        model_path = os.path.join(checkpoints_dir, model_files[0])
         _model = ModelFactory.get_model(model_name=model , model_path=model_path, 
                                         out_score_file_name='bla')
 

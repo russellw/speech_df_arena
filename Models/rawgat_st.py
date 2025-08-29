@@ -486,7 +486,7 @@ def load_model(model_path, out_score_file_name):
     pytorch_model = RawGAT_ST(MODEL_CONFIG_ARGS, device)
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
-        pytorch_model.load_state_dict(torch.load(model_path))
+        pytorch_model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
     
     model = RawGAT_ST_antispoofing(pytorch_model)
     

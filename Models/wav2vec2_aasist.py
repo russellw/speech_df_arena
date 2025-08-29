@@ -616,7 +616,7 @@ def load_model(model_path, out_score_file_name):
 
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
-        state_dict = torch.load(model_path, map_location='cpu')
+        state_dict = torch.load(model_path, map_location='cpu', weights_only=False)
         state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
         model.load_state_dict(state_dict, strict=True)
         del state_dict

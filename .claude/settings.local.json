@@ -4,7 +4,8 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "Bash(export:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(./run_evaluation.sh:*)"
     ],
     "deny": []
   }

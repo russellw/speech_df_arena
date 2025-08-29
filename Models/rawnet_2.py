@@ -324,7 +324,7 @@ def load_model(model_path, out_score_file_name):
 
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
-        pytorch_model.load_state_dict(torch.load(model_path, map_location=device), strict=True)
+        pytorch_model.load_state_dict(torch.load(model_path, map_location=device, weights_only=False), strict=True)
     
     model = RawNet_antispoofing(pytorch_model)
         
