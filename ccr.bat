@@ -52,31 +52,3 @@ if errorlevel 1 goto :pip_error
 echo.
 echo === Install HF + pip-first libraries ===
 
-REM Install the HF + SpeechBrain bits
-pip install transformers==4.45.2 speechbrain==1.0.0
-
-REM fairseq build prereqs (Windows needs a compiler)
-pip install "cython<3" ninja cmake "hydra-core<1.1,>=1.0.7" "omegaconf<2.1"
-
-REM Install fairseq from PyPI
-pip install --no-build-isolation "fairseq==0.12.2"
-if errorlevel 1 goto :pip_error
-
-echo.
-echo === Verify ===
-python -V
-pip --version
-conda list | findstr /R /C:"^python " /C:"^numpy " /C:"^scipy " /C:"^librosa " /C:"^pandas " /C:"^pytorch-lightning " /C:"^pyyaml " /C:"^rich " /C:"^tqdm " /C:"^einops "
-pip show torch torchaudio transformers fairseq speechbrain | findstr /B "Name Version"
-
-echo.
-echo === Done. Activate later with: conda activate %ENV_NAME% ===
-goto :eof
-
-:conda_error
-echo [ERROR] Conda step failed. See messages above.
-exit /b 1
-
-:pip_error
-echo [ERROR] Pip step failed. See messages above.
-exit /b 1
