@@ -1,0 +1,105 @@
+a@DESKTOP-6MNES2G:/mnt/c/speech_df_arena$ ./run_evaluation.sh --protocol_files fake_or_real --batch_size 32 --models all --fix_length --device cpu
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+Seed set to 42
+💡 Tip: For seamless cloud uploads and versioning, try installing [litmodels](https://pypi.org/project/litmodels/) to enable LitModelCheckpoint, which syncs automatically with the Lightning model registry.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+ Loading checkpoint from /mnt/c/speech_df_arena/df_arena_checkpoints/aasist.pth
+Evaluating for aasist on fake_or_real. Fix length to 4s -> True
+Score file: ./scores/aasist_20250830_014408/fake_or_real.txt
+Log file: ./logs/aasist_20250830_014408/fake_or_real.log
+^[[BResults for aasist on fake_or_real: {'EER (%)': 21.598939929328623, 'Threshold': -2.2063724994659424, 'F1-score': 0.7838374917200265, 'Accuracy (%)': 78.37897526501767}
+/home/a/.local/lib/python3.10/site-packages/speechbrain/utils/torch_audio_backend.py:57: UserWarning: torchaudio._backend.list_audio_backends has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release.
+  available_backends = torchaudio.list_audio_backends()
+ Loading checkpoint from /mnt/c/speech_df_arena/df_arena_checkpoints/hubert_ecapa.ckpt
+config.json: 1.39kB [00:00, 3.72MB/s]
+pytorch_model.bin: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 378M/378M [00:09<00:00, 41.6MB/s]
+model.safetensors:   0%|                                                                                                                                                              | 0.00/378M [00:00<?, ?B/s]Evaluating for hubert_ecapa on fake_or_real. Fix length to 4s -> True
+Score file: ./scores/hubert_ecapa_20250830_014408/fake_or_real.txt
+Log file: ./logs/hubert_ecapa_20250830_014408/fake_or_real.log
+model.safetensors: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 378M/378M [00:04<00:00, 82.0MB/s]
+Results for hubert_ecapa on fake_or_real: {'EER (%)': 44.16961130742049, 'Threshold': -3.3680014610290527, 'F1-score': 0.5586222124089203, 'Accuracy (%)': 55.85247349823321}
+Traceback (most recent call last):
+  File "/mnt/c/speech_df_arena/evaluate.py", line 37, in <module>
+    main()
+  File "/mnt/c/speech_df_arena/evaluate.py", line 27, in main
+    results = evaluate_across_models_across_datasets(args, TIMESTAMP, CHECKPOINTS_DIR, PROTOCOL_FILES_DIR)
+  File "/mnt/c/speech_df_arena/utils/evaluation_helper.py", line 49, in evaluate_across_models_across_datasets
+    model_path = os.path.join(checkpoints_dir, model_files[0])
+IndexError: list index out of range
+
+
+a@DESKTOP-6MNES2G:/mnt/c/speech_df_arena$ ./run_evaluation.sh --protocol_files fake_or_real --batch_size 32 --fix_length --device cpu --models rawgat_st
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+Seed set to 42
+💡 Tip: For seamless cloud uploads and versioning, try installing [litmodels](https://pypi.org/project/litmodels/) to enable LitModelCheckpoint, which syncs automatically with the Lightning model registry.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+ Loading checkpoint from /mnt/c/speech_df_arena/df_arena_checkpoints/rawgat_st.pth
+Evaluating for rawgat_st on fake_or_real. Fix length to 4s -> True
+Score file: ./scores/rawgat_st_20250830_060930/fake_or_real.txt
+Log file: ./logs/rawgat_st_20250830_060930/fake_or_real.log
+^[[BResults for rawgat_st on fake_or_real: {'EER (%)': 53.003533568904594, 'Threshold': -6.831690788269043, 'F1-score': 0.46986089644513135, 'Accuracy (%)': 46.974381625441694}
+[blue] Summary of results: {'rawgat_st': {'fake_or_real': {'EER (%)': 53.003533568904594, 'Threshold': -6.831690788269043, 'F1-score': 0.46986089644513135, 'Accuracy (%)': 46.974381625441694}}}[/blue]
+
+
+a@DESKTOP-6MNES2G:/mnt/c/speech_df_arena$ ./run_evaluation.sh --protocol_files fake_or_real --batch_size 32 --fix_length --device cpu --models rawnet_2
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+Seed set to 42
+💡 Tip: For seamless cloud uploads and versioning, try installing [litmodels](https://pypi.org/project/litmodels/) to enable LitModelCheckpoint, which syncs automatically with the Lightning model registry.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+ Loading checkpoint from /mnt/c/speech_df_arena/df_arena_checkpoints/rawnet_2.pth
+Evaluating for rawnet_2 on fake_or_real. Fix length to 4s -> True
+Score file: ./scores/rawnet_2_20250830_115152/fake_or_real.txt
+Log file: ./logs/rawnet_2_20250830_115152/fake_or_real.log
+Results for rawnet_2 on fake_or_real: {'EER (%)': 48.542402826855124, 'Threshold': -11.135537147521973, 'F1-score': 0.5144623537204681, 'Accuracy (%)': 51.435512367491164}
+[blue] Summary of results: {'rawnet_2': {'fake_or_real': {'EER (%)': 48.542402826855124, 'Threshold': -11.135537147521973, 'F1-score': 0.5144623537204681, 'Accuracy (%)': 51.435512367491164}}}[/blue]
+
+
+a@DESKTOP-6MNES2G:/mnt/c/speech_df_arena$ ./run_evaluation.sh --protocol_files fake_or_real --batch_size 32 --fix_length --device cpu --models wav2vec2_ecapa
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+Seed set to 42
+💡 Tip: For seamless cloud uploads and versioning, try installing [litmodels](https://pypi.org/project/litmodels/) to enable LitModelCheckpoint, which syncs automatically with the Lightning model registry.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+/home/a/.local/lib/python3.10/site-packages/speechbrain/utils/torch_audio_backend.py:57: UserWarning: torchaudio._backend.list_audio_backends has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release.
+  available_backends = torchaudio.list_audio_backends()
+ Loading checkpoint from /mnt/c/speech_df_arena/df_arena_checkpoints/wav2vec2_ecapa.ckpt
+config.json: 1.55kB [00:00, 3.79MB/s]
+pytorch_model.bin: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1.27G/1.27G [00:20<00:00, 61.8MB/s]
+model.safetensors:  48%|███████████████████████████████████████████████████████████████████████▎                                                                              | 604M/1.27G [00:02<00:01, 471MB/s]Evaluating for wav2vec2_ecapa on fake_or_real. Fix length to 4s -> True
+Score file: ./scores/wav2vec2_ecapa_20250830_122904/fake_or_real.txt
+Log file: ./logs/wav2vec2_ecapa_20250830_122904/fake_or_real.log
+model.safetensors: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1.27G/1.27G [00:18<00:00, 69.5MB/s]
+Results for wav2vec2_ecapa on fake_or_real: {'EER (%)': 55.07950530035336, 'Threshold': 15.912166595458984, 'F1-score': 0.44954736144844337, 'Accuracy (%)': 44.94257950530035}
+[blue] Summary of results: {'wav2vec2_ecapa': {'fake_or_real': {'EER (%)': 55.07950530035336, 'Threshold': 15.912166595458984, 'F1-score': 0.44954736144844337, 'Accuracy (%)': 44.94257950530035}}}[/blue]
+
+
+a@DESKTOP-6MNES2G:/mnt/c/speech_df_arena$ ./run_evaluation.sh --protocol_files fake_or_real --batch_size 32 --fix_length --device cpu --models wavlm_ecapa
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+Seed set to 42
+💡 Tip: For seamless cloud uploads and versioning, try installing [litmodels](https://pypi.org/project/litmodels/) to enable LitModelCheckpoint, which syncs automatically with the Lightning model registry.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+/home/a/.local/lib/python3.10/site-packages/speechbrain/utils/torch_audio_backend.py:57: UserWarning: torchaudio._backend.list_audio_backends has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release.
+  available_backends = torchaudio.list_audio_backends()
+Loading checkpoint from /mnt/c/speech_df_arena/df_arena_checkpoints/wavlm_ecapa.ckpt
+config.json: 2.24kB [00:00, 3.59MB/s]
+pytorch_model.bin: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 378M/378M [00:07<00:00, 50.8MB/s]
+model.safetensors:   0%|                                                                                                                                                              | 0.00/378M [00:00<?, ?B/s]Evaluating for wavlm_ecapa on fake_or_real. Fix length to 4s -> True
+Score file: ./scores/wavlm_ecapa_20250830_151611/fake_or_real.txt
+Log file: ./logs/wavlm_ecapa_20250830_151611/fake_or_real.log
+model.safetensors: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 378M/378M [00:08<00:00, 42.3MB/s]
+Results for wavlm_ecapa on fake_or_real: {'EER (%)': 23.40989399293286, 'Threshold': -1.6424683332443235, 'F1-score': 0.7661735482446456, 'Accuracy (%)': 76.61219081272085}
+[blue] Summary of results: {'wavlm_ecapa': {'fake_or_real': {'EER (%)': 23.40989399293286, 'Threshold': -1.6424683332443235, 'F1-score': 0.7661735482446456, 'Accuracy (%)': 76.61219081272085}}}[/blue]

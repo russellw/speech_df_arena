@@ -1,0 +1,8 @@
+ --models {all,aasist,hubert_ecapa,nes2net_x,rawgat_st,rawnet_2,tcm_add,wav2vec2_aasist,wav2vec2_ecapa,wavlm_ecapa,xlsr_sls}
+ 
+aasist
+hubert_ecapa
+rawgat_st
+rawnet_2
+wav2vec2_ecapa
+wavlm_ecapa
