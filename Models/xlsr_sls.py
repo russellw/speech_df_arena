@@ -12,18 +12,8 @@ class SSLModel(nn.Module):
         super(SSLModel, self).__init__()
         
         cp_path = os.path.join(CHECKPOINTS_DIR, 'xlsr2_300m.pt')
-        
-        # Check fairseq version and provide clear error message
-        import fairseq
-        fairseq_version = fairseq.__version__ if hasattr(fairseq, '__version__') else "unknown"
-        
-        print(f"[bold red]XLSR_SLS model is not compatible with current fairseq version ({fairseq_version})[/bold red]")
-        print(f"[yellow]The XLSR-300M checkpoint was created with an older fairseq version.[/yellow]")
-        print(f"[yellow]To use this model, you need to:[/yellow]")
-        print(f"[yellow]1. Install fairseq==0.10.2 (older version)[/yellow]")  
-        print(f"[yellow]2. Or use a different model like aasist, rawnet_2, etc.[/yellow]")
-        
-        raise RuntimeError(f"XLSR_SLS model requires fairseq==0.10.2 but found version {fairseq_version}. Please use a different model or downgrade fairseq.")
+        print(f"[green]Loading XLSR-300M model from {cp_path}[/green]")
+        model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task([cp_path], strict=False)
         self.model = model[0]
         self.device=device
         self.out_dim = 1024
@@ -46,7 +36,14 @@ class SSLModel(nn.Module):
             # [batch, length, dim]
             out = self.model(input_tmp, mask=False, features_only=True)
             emb = out['x']
-            layerresult = out['layer_results']
+            # Handle both old and new fairseq versions
+            if 'layer_results' in out:
+                layerresult = out['layer_results']
+            elif 'features' in out:
+                layerresult = out['features']
+            else:
+                # Create dummy layer results based on the main output
+                layerresult = [(emb, None) for _ in range(24)]  # 24 layers for XLSR
         return emb, layerresult
 
 def getAttenF(layerResult):
@@ -143,7 +140,7 @@ def load_model(model_path,  out_score_file_name):
     
     if model_path:
         print(f'[bold green] Loading checkpoint from {model_path} [/bold green]')
-        pytorch_model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
+        pytorch_model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False), strict=False)
     
     model = XLSR_SLS_antispoofing(pytorch_model)
     

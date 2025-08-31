@@ -6,7 +6,10 @@
       "Bash(export:*)",
       "Bash(chmod:*)",
       "Bash(./run_evaluation.sh:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(pip uninstall:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
