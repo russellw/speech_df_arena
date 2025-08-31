@@ -11,8 +11,19 @@ class SSLModel(nn.Module):
     def __init__(self,device):
         super(SSLModel, self).__init__()
         
-        cp_path = os.path.join(CHECKPOINTS_DIR, 'checkpoints/xlsr2_300m.pt')
-        model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task([cp_path])
+        cp_path = os.path.join(CHECKPOINTS_DIR, 'xlsr2_300m.pt')
+        
+        # Check fairseq version and provide clear error message
+        import fairseq
+        fairseq_version = fairseq.__version__ if hasattr(fairseq, '__version__') else "unknown"
+        
+        print(f"[bold red]XLSR_SLS model is not compatible with current fairseq version ({fairseq_version})[/bold red]")
+        print(f"[yellow]The XLSR-300M checkpoint was created with an older fairseq version.[/yellow]")
+        print(f"[yellow]To use this model, you need to:[/yellow]")
+        print(f"[yellow]1. Install fairseq==0.10.2 (older version)[/yellow]")  
+        print(f"[yellow]2. Or use a different model like aasist, rawnet_2, etc.[/yellow]")
+        
+        raise RuntimeError(f"XLSR_SLS model requires fairseq==0.10.2 but found version {fairseq_version}. Please use a different model or downgrade fairseq.")
         self.model = model[0]
         self.device=device
         self.out_dim = 1024
