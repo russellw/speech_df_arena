@@ -9,3 +9,6 @@ wavlm_ecapa
 
 
 https://speech-arena.github.io/
+
+
+xlsr_sls

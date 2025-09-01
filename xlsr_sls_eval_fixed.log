@@ -1,0 +1,18 @@
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+Seed set to 42
+💡 Tip: For seamless cloud uploads and versioning, try installing [litmodels](https://pypi.org/project/litmodels/) to enable LitModelCheckpoint, which syncs automatically with the Lightning model registry.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+/home/a/.local/lib/python3.10/site-packages/torch/nn/utils/weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+[green]Creating XLSR model structure (weights from xlsr_sls checkpoint)[/green]
+[bold green] Loading checkpoint from /mnt/c/speech_df_arena/df_arena_checkpoints/xlsr_sls.pth [/bold green]
+Evaluating for xlsr_sls on fake_or_real. Fix length to 4s -> True
+Score file: ./scores/xlsr_sls_20250901_080149/fake_or_real.txt
+Log file: ./logs/xlsr_sls_20250901_080149/fake_or_real.log
+Results for xlsr_sls on fake_or_real: {'EER (%)': 28.79858657243816, 
+'Threshold': -14.81156063079834, 'F1-score': 0.7118569220578495, 'Accuracy (%)':
+71.17932862190813}
+[blue] Summary of results: {'xlsr_sls': {'fake_or_real': {'EER (%)': 28.79858657243816, 'Threshold': -14.81156063079834, 'F1-score': 0.7118569220578495, 'Accuracy (%)': 71.17932862190813}}}[/blue]

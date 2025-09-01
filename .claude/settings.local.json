@@ -9,7 +9,8 @@
       "Bash(ls:*)",
       "Bash(pip uninstall:*)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }

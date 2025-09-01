@@ -11,10 +11,61 @@ class SSLModel(nn.Module):
     def __init__(self,device):
         super(SSLModel, self).__init__()
         
-        cp_path = os.path.join(CHECKPOINTS_DIR, 'xlsr2_300m.pt')
-        print(f"[green]Loading XLSR-300M model from {cp_path}[/green]")
-        model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task([cp_path], strict=False)
-        self.model = model[0]
+        # Create XLSR model structure with xlsr_sls checkpoint weights
+        print(f"[green]Creating XLSR model structure (weights from xlsr_sls checkpoint)[/green]")
+        
+        from fairseq.models.wav2vec.wav2vec2 import Wav2Vec2Model
+        from argparse import Namespace
+        
+        # Use exact XLSR-53 configuration
+        args = Namespace()
+        args.extractor_mode = 'layer_norm'
+        args.encoder_layers = 24
+        args.encoder_embed_dim = 1024
+        args.encoder_ffn_embed_dim = 4096
+        args.encoder_attention_heads = 16
+        args.activation_fn = 'gelu'
+        args.dropout = 0.0
+        args.attention_dropout = 0.0
+        args.activation_dropout = 0.0
+        args.encoder_layerdrop = 0.0
+        args.dropout_input = 0.0
+        args.dropout_features = 0.0
+        args.final_dim = 768
+        args.layer_norm_first = True
+        args.conv_feature_layers = '[(512, 10, 5)] + [(512, 3, 2)] * 4 + [(512,2,2)] + [(512,2,2)]'
+        args.conv_bias = True
+        args.logit_temp = 0.1
+        args.quantize_targets = True
+        args.quantize_input = False
+        args.same_quantizer = False
+        args.target_glu = False
+        args.feature_grad_mult = 1.0
+        args.latent_vars = 320
+        args.latent_groups = 2
+        args.latent_dim = 0
+        args.mask_length = 10
+        args.mask_prob = 0.65
+        args.mask_selection = 'static'
+        args.mask_other = 0.0
+        args.no_mask_overlap = False
+        args.mask_min_space = 1
+        args.mask_channel_length = 10
+        args.mask_channel_prob = 0.0
+        args.mask_channel_selection = 'static'
+        args.mask_channel_other = 0.0
+        args.no_mask_channel_overlap = False
+        args.mask_channel_min_space = 1
+        args.num_negatives = 100
+        args.negatives_from_everywhere = False
+        args.cross_sample_negatives = 0
+        args.codebook_negatives = 0
+        args.conv_pos = 128
+        args.conv_pos_groups = 16
+        args.latent_temp = "[2.0, 0.1, 0.999995]"
+        
+        # Create model structure
+        self.model = Wav2Vec2Model(args)
         self.device=device
         self.out_dim = 1024
         return
@@ -24,7 +75,7 @@ class SSLModel(nn.Module):
         if next(self.model.parameters()).device != input_data.device \
            or next(self.model.parameters()).dtype != input_data.dtype:
             self.model.to(input_data.device, dtype=input_data.dtype)
-            self.model.train()
+            self.model.eval()  # Set to eval mode for inference!
 
         
         if True:
@@ -33,17 +84,36 @@ class SSLModel(nn.Module):
             else:
                 input_tmp = input_data
                 
-            # [batch, length, dim]
-            out = self.model(input_tmp, mask=False, features_only=True)
-            emb = out['x']
-            # Handle both old and new fairseq versions
-            if 'layer_results' in out:
-                layerresult = out['layer_results']
-            elif 'features' in out:
-                layerresult = out['features']
-            else:
-                # Create dummy layer results based on the main output
-                layerresult = [(emb, None) for _ in range(24)]  # 24 layers for XLSR
+            # Get features from feature extractor
+            features = self.model.feature_extractor(input_tmp)
+            features = features.transpose(1, 2)  # (B, T, C) -> (B, C, T)
+            features = self.model.layer_norm(features)
+            
+            # Apply post extract projection if it exists
+            if self.model.post_extract_proj is not None:
+                features = self.model.post_extract_proj(features)
+            
+            # Get representations from all encoder layers
+            encoder_padding_mask = None  # Assuming no padding for simplicity
+            layer_results = []
+            
+            x = features.transpose(0, 1)  # (B, T, C) -> (T, B, C) for transformer
+            
+            for layer in self.model.encoder.layers:
+                x, attn = layer(x, encoder_padding_mask)
+                # Store (layer_output, attention) in the expected format
+                layer_results.append((x, attn))
+            
+            # Final layer norm
+            if self.model.encoder.layer_norm is not None:
+                x = self.model.encoder.layer_norm(x)
+            
+            # Final projection
+            if self.model.final_proj is not None:
+                x = self.model.final_proj(x)
+            
+            emb = x.transpose(0, 1)  # (T, B, C) -> (B, T, C)
+            layerresult = layer_results
         return emb, layerresult
 
 def getAttenF(layerResult):
@@ -143,6 +213,9 @@ def load_model(model_path,  out_score_file_name):
         pytorch_model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False), strict=False)
     
     model = XLSR_SLS_antispoofing(pytorch_model)
+    
+    # Set model to evaluation mode - critical for inference!
+    model.eval()
     
     model.out_score_file_name = out_score_file_name
 
